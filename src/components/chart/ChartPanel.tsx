@@ -39,7 +39,7 @@ function ChartPanelInner() {
     script.async = true;
     script.innerHTML = JSON.stringify({
       autosize: true,
-      symbol: "CME_MINI:MNQ1!",
+      symbol: "PEPPERSTONE:NAS100",
       interval: "3",
       timezone: "America/New_York",
       theme: "dark",
@@ -100,14 +100,17 @@ function ChartPanelInner() {
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-bp-lime animate-dot-pulse" />
             <span className="text-sm font-semibold text-bp-text tracking-wide">
-              MNQ1!
+              NAS100
             </span>
           </div>
           <span className="text-[10px] text-bp-violet-light font-semibold px-1.5 py-0.5 bg-bp-violet/10 rounded">
             3m
           </span>
           <span className="text-[10px] text-bp-text-dim px-1.5 py-0.5 bg-bp-bg-tertiary rounded">
-            CME
+            Preview
+          </span>
+          <span className="text-[9px] text-bp-text-dim/60">
+            MNQ1! via Open TradingView →
           </span>
         </div>
         <div className="flex items-center gap-3">
