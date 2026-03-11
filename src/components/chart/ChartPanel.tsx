@@ -1,16 +1,19 @@
 // ═══════════════════════════════════════════
-// BARPHASE — CHART PANEL (TradingView) v2.1
-// Uses full Advanced Chart Widget with popup login support
+// BARPHASE — CHART PANEL (TradingView) v2.3
+// Widget mode: embedded chart | Full mode: TradingView with login
 // ═══════════════════════════════════════════
 
 "use client";
 
-import React, { useEffect, useRef, memo, useState } from "react";
+import React, { useEffect, useRef, memo, useState, useCallback } from "react";
+
+const TV_CHART_URL = "https://www.tradingview.com/chart/?symbol=CME_MINI%3AMNQ1!&interval=3&theme=dark";
 
 function ChartPanelInner() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [chartMode, setChartMode] = useState<"widget" | "full">("widget");
 
+  // Load the embedded widget
   useEffect(() => {
     if (!containerRef.current || chartMode !== "widget") return;
 
@@ -77,6 +80,18 @@ function ChartPanelInner() {
     };
   }, [chartMode]);
 
+  const openTradingView = useCallback(() => {
+    const width = Math.min(window.screen.width * 0.85, 1400);
+    const height = Math.min(window.screen.height * 0.85, 900);
+    const left = (window.screen.width - width) / 2;
+    const top = (window.screen.height - height) / 2;
+    window.open(
+      TV_CHART_URL,
+      "tradingview_barphase",
+      `width=${width},height=${height},left=${left},top=${top},menubar=no,toolbar=no,location=yes,status=no,scrollbars=yes,resizable=yes`
+    );
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       {/* Chart Header */}
@@ -96,6 +111,7 @@ function ChartPanelInner() {
           </span>
         </div>
         <div className="flex items-center gap-3">
+          {/* Overlay legend */}
           <div className="flex items-center gap-4 mr-3">
             <div className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-sm" style={{ background: "rgba(76, 175, 80, 0.5)" }} />
@@ -110,52 +126,24 @@ function ChartPanelInner() {
               <span className="text-[10px] text-bp-text-dim">FVG</span>
             </div>
           </div>
-          {/* Mode toggle */}
-          <div className="flex items-center gap-1 bg-bp-bg-tertiary rounded-lg p-0.5">
-            <button
-              onClick={() => setChartMode("widget")}
-              className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                chartMode === "widget"
-                  ? "bg-bp-violet/15 text-bp-violet-light"
-                  : "text-bp-text-dim hover:text-bp-text"
-              }`}
-            >
-              Widget
-            </button>
-            <button
-              onClick={() => setChartMode("full")}
-              className={`text-[10px] px-2 py-1 rounded transition-colors ${
-                chartMode === "full"
-                  ? "bg-bp-violet/15 text-bp-violet-light"
-                  : "text-bp-text-dim hover:text-bp-text"
-              }`}
-            >
-              Full Chart
-            </button>
-          </div>
+          {/* Open TradingView with login */}
+          <button
+            onClick={openTradingView}
+            className="flex items-center gap-1.5 text-[10px] px-2.5 py-1.5 rounded-lg bg-bp-violet/15 text-bp-violet-light hover:bg-bp-violet/25 transition-colors font-medium"
+            title="Open full TradingView with your account — log in for futures access"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+              <polyline points="15 3 21 3 21 9" />
+              <line x1="10" y1="14" x2="21" y2="3" />
+            </svg>
+            Open TradingView
+          </button>
         </div>
       </div>
 
-      {/* Chart Body */}
-      {chartMode === "widget" ? (
-        <div ref={containerRef} className="flex-1 min-h-0" />
-      ) : (
-        <div className="flex-1 min-h-0 relative">
-          <iframe
-            src="https://www.tradingview.com/widgetembed/?hideideas=1&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=en#%7B%22symbol%22%3A%22CME_MINI%3AMNQ1!%22%2C%22frameElementId%22%3A%22tradingview_barphase%22%2C%22interval%22%3A%223%22%2C%22hide_side_toolbar%22%3A%220%22%2C%22allow_symbol_change%22%3A%221%22%2C%22save_image%22%3A%220%22%2C%22theme%22%3A%22dark%22%2C%22style%22%3A%221%22%2C%22timezone%22%3A%22America%2FNew_York%22%2C%22withdateranges%22%3A%221%22%2C%22show_popup_button%22%3A%221%22%2C%22popup_width%22%3A%221200%22%2C%22popup_height%22%3A%22800%22%7D"
-            className="w-full h-full border-0"
-            allowFullScreen
-            allow="clipboard-write"
-          />
-          <div className="absolute bottom-3 left-3 bg-bp-bg/90 backdrop-blur-sm border border-bp-border rounded-lg px-3 py-2">
-            <p className="text-[10px] text-bp-text-dim">
-              💡 Log into your TradingView account above to access futures data.
-              <br />
-              Click the profile icon in the chart toolbar to sign in.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Chart Widget */}
+      <div ref={containerRef} className="flex-1 min-h-0" />
     </div>
   );
 }
