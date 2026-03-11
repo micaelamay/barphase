@@ -33,7 +33,7 @@ const MOCK_SIGNALS: SignalEntry[] = [
 ];
 
 export default function SignalsPage() {
-  const { state } = useBarphaseEngine();
+  const { state, countdown, lastClose } = useBarphaseEngine();
 
   const entryCount = MOCK_SIGNALS.filter((s) => s.signal.includes("ENTER")).length;
   const winCount = MOCK_SIGNALS.filter((s) => s.outcome.startsWith("+")).length;

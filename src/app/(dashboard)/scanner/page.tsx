@@ -1,10 +1,10 @@
 // ═══════════════════════════════════════════
-// BARPHASE — MARKET SCANNER
+// BARPHASE — MARKET SCANNER (Working Refresh)
 // ═══════════════════════════════════════════
 
 "use client";
 
-import React from "react";
+import React, { useState, useCallback } from "react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 
@@ -19,16 +19,41 @@ interface ScanResult {
   signal: string;
 }
 
-const SCAN_RESULTS: ScanResult[] = [
-  { symbol: "MNQ", exchange: "CME", bias: "Bullish", event: "BOS", score: 5, price: 21452.50, change: 0.42, signal: "READY" },
-  { symbol: "MES", exchange: "CME", bias: "Bearish", event: "CHOCH", score: 4, price: 5892.25, change: -0.18, signal: "PREPARE" },
-  { symbol: "MYM", exchange: "CBOT", bias: "Neutral", event: "None", score: 1, price: 42815.00, change: 0.05, signal: "IDLE" },
-  { symbol: "M2K", exchange: "CME", bias: "Bullish", event: "Sweep", score: 3, price: 2285.40, change: 0.31, signal: "WAITING" },
-  { symbol: "MNQ", exchange: "CME", bias: "Bullish", event: "BOS", score: 6, price: 21467.25, change: 0.52, signal: "ENTER" },
-  { symbol: "MCL", exchange: "NYMEX", bias: "Bearish", event: "CHOCH", score: 2, price: 68.42, change: -1.24, signal: "WAITING" },
-  { symbol: "MGC", exchange: "COMEX", bias: "Bullish", event: "BOS", score: 4, price: 2185.60, change: 0.67, signal: "PREPARE" },
-  { symbol: "6E", exchange: "CME", bias: "Neutral", event: "None", score: 0, price: 1.0842, change: -0.03, signal: "IDLE" },
-];
+function jitter(base: number, range: number): number {
+  return Math.round((base + (Math.random() - 0.5) * range) * 100) / 100;
+}
+
+function generateScanData(): ScanResult[] {
+  const biases: ("Bullish" | "Bearish" | "Neutral")[] = ["Bullish", "Bearish", "Neutral"];
+  const events = ["BOS", "CHOCH", "Sweep", "None"];
+  const signals = ["IDLE", "WAITING", "PREPARE", "READY", "ENTER"];
+
+  return [
+    { symbol: "MNQ", exchange: "CME", price: 21452.50, base: 21452.50 },
+    { symbol: "MES", exchange: "CME", price: 5892.25, base: 5892.25 },
+    { symbol: "MYM", exchange: "CBOT", price: 42815.00, base: 42815.00 },
+    { symbol: "M2K", exchange: "CME", price: 2285.40, base: 2285.40 },
+    { symbol: "MCL", exchange: "NYMEX", price: 68.42, base: 68.42 },
+    { symbol: "MGC", exchange: "COMEX", price: 2185.60, base: 2185.60 },
+    { symbol: "6E", exchange: "CME", price: 1.0842, base: 1.0842 },
+    { symbol: "MBT", exchange: "CME", price: 97420.00, base: 97420.00 },
+  ].map((item) => {
+    const score = Math.floor(Math.random() * 7);
+    const biasIdx = score >= 4 ? Math.floor(Math.random() * 2) : Math.floor(Math.random() * 3);
+    const eventIdx = score >= 3 ? Math.floor(Math.random() * 3) : (Math.random() > 0.5 ? 3 : Math.floor(Math.random() * 4));
+    const signalIdx = Math.min(score >= 6 ? 4 : score >= 5 ? 3 : Math.max(0, Math.floor(score / 2)), 4);
+    return {
+      symbol: item.symbol,
+      exchange: item.exchange,
+      bias: biases[biasIdx],
+      event: events[eventIdx],
+      score,
+      price: jitter(item.price, item.price * 0.005),
+      change: jitter(0, 2),
+      signal: signals[signalIdx],
+    };
+  });
+}
 
 function getSignalColor(signal: string): string {
   if (signal === "ENTER") return "text-bp-lime";
@@ -38,7 +63,21 @@ function getSignalColor(signal: string): string {
 }
 
 export default function ScannerPage() {
-  const activeSignals = SCAN_RESULTS.filter((r) => r.score >= 4).length;
+  const [results, setResults] = useState<ScanResult[]>(generateScanData);
+  const [lastScan, setLastScan] = useState(new Date());
+  const [scanning, setScanning] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    setScanning(true);
+    // Simulate scan delay for visual feedback
+    setTimeout(() => {
+      setResults(generateScanData());
+      setLastScan(new Date());
+      setScanning(false);
+    }, 600);
+  }, []);
+
+  const activeSignals = results.filter((r) => r.score >= 4).length;
 
   return (
     <div className="h-full overflow-y-auto">
@@ -46,12 +85,22 @@ export default function ScannerPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-bp-text">Market Scanner</h1>
-            <p className="text-[12px] text-bp-text-dim mt-0.5">Scan multiple instruments for Barphase setups</p>
+            <p className="text-[12px] text-bp-text-dim mt-0.5">
+              Scan multiple instruments for Barphase setups — Last scan: {lastScan.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="violet" size="md">{activeSignals} setups detected</Badge>
-            <button className="px-3 py-1.5 bg-bp-bg-tertiary text-bp-text-muted text-[11px] font-medium rounded-lg hover:bg-bp-bg-elevated transition-colors border border-bp-border">
-              Refresh
+            <button
+              onClick={handleRefresh}
+              disabled={scanning}
+              className={`px-3 py-1.5 text-[11px] font-medium rounded-lg border transition-all ${
+                scanning
+                  ? "bg-bp-violet/12 border-bp-violet/25 text-bp-violet-light animate-pulse"
+                  : "bg-bp-bg-tertiary text-bp-text-muted hover:bg-bp-bg-elevated hover:text-bp-text border-bp-border"
+              }`}
+            >
+              {scanning ? "Scanning..." : "⟳ Refresh"}
             </button>
           </div>
         </div>
@@ -67,30 +116,20 @@ export default function ScannerPage() {
                 </tr>
               </thead>
               <tbody>
-                {SCAN_RESULTS.map((r, i) => (
-                  <tr key={i} className={`border-b border-bp-border/50 hover:bg-bp-bg-tertiary/50 transition-colors cursor-pointer ${r.score >= 5 ? "bg-bp-lime/3" : ""}`}>
-                    <td className="px-4 py-3">
-                      <span className="font-semibold text-bp-text">{r.symbol}</span>
-                    </td>
+                {results.map((r, i) => (
+                  <tr key={`${r.symbol}-${i}`} className={`border-b border-bp-border/50 hover:bg-bp-bg-tertiary/50 transition-colors cursor-pointer ${r.score >= 5 ? "bg-bp-lime/3" : ""}`}>
+                    <td className="px-4 py-3"><span className="font-semibold text-bp-text">{r.symbol}</span></td>
                     <td className="px-4 py-3 text-bp-text-dim">{r.exchange}</td>
-                    <td className="px-4 py-3 text-bp-text tabular-nums font-mono">{r.price.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-bp-text tabular-nums font-mono">{r.price.toFixed(r.price < 10 ? 4 : 2)}</td>
                     <td className={`px-4 py-3 tabular-nums font-semibold ${r.change >= 0 ? "text-bp-lime" : "text-bp-bear"}`}>
                       {r.change >= 0 ? "+" : ""}{r.change.toFixed(2)}%
                     </td>
+                    <td className="px-4 py-3"><Badge variant={r.bias === "Bullish" ? "lime" : r.bias === "Bearish" ? "bear" : "neutral"} size="sm">{r.bias}</Badge></td>
+                    <td className="px-4 py-3"><Badge variant={r.event !== "None" ? "violet" : "neutral"} size="sm">{r.event}</Badge></td>
                     <td className="px-4 py-3">
-                      <Badge variant={r.bias === "Bullish" ? "lime" : r.bias === "Bearish" ? "bear" : "neutral"} size="sm">{r.bias}</Badge>
+                      <span className={`font-bold tabular-nums ${r.score >= 5 ? "text-bp-lime" : r.score >= 3 ? "text-bp-violet-light" : "text-bp-text-dim"}`}>{r.score}/6</span>
                     </td>
-                    <td className="px-4 py-3">
-                      <Badge variant={r.event !== "None" ? "violet" : "neutral"} size="sm">{r.event}</Badge>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`font-bold tabular-nums ${r.score >= 5 ? "text-bp-lime" : r.score >= 3 ? "text-bp-violet-light" : "text-bp-text-dim"}`}>
-                        {r.score}/6
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`font-semibold ${getSignalColor(r.signal)}`}>{r.signal}</span>
-                    </td>
+                    <td className="px-4 py-3"><span className={`font-semibold ${getSignalColor(r.signal)}`}>{r.signal}</span></td>
                   </tr>
                 ))}
               </tbody>

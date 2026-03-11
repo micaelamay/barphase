@@ -7,75 +7,27 @@ export const BARPHASE = {
   version: "2.0.0",
   instrument: "MNQ",
   timeframe: "3m",
+  candlePeriodMs: 3 * 60 * 1000, // 3 minutes in milliseconds
 } as const;
 
 // ── Color Palette ──────────────────────────
 export const COLORS = {
-  bg: {
-    primary: "#09090F",
-    secondary: "#111118",
-    tertiary: "#1A1A24",
-    elevated: "#222230",
-  },
-  border: {
-    default: "#2A2A38",
-    light: "#3A3A4A",
-  },
-  text: {
-    primary: "#FFFFFF",
-    muted: "#9898A8",
-    dim: "#5E5E72",
-  },
-  violet: {
-    primary: "#7D39EB",
-    light: "#9B5FF5",
-    dim: "#5A2BA8",
-    bg: "rgba(125, 57, 235, 0.12)",
-    glow: "rgba(125, 57, 235, 0.15)",
-  },
-  lime: {
-    primary: "#C6FF33",
-    muted: "#A3D42A",
-    bg: "rgba(198, 255, 51, 0.12)",
-    glow: "rgba(198, 255, 51, 0.12)",
-  },
-  bull: {
-    primary: "#4CAF50",
-    accent: "#7ED957",
-    bg: "rgba(76, 175, 80, 0.20)",
-    glow: "rgba(76, 175, 80, 0.15)",
-  },
-  bear: {
-    primary: "#F23645",
-    accent: "#FF6B6B",
-    bg: "rgba(242, 54, 69, 0.20)",
-    glow: "rgba(242, 54, 69, 0.15)",
-  },
-  fvg: {
-    primary: "#FFEB3B",
-    bg: "rgba(255, 235, 59, 0.20)",
-  },
+  bg: { primary: "#09090F", secondary: "#111118", tertiary: "#1A1A24", elevated: "#222230" },
+  border: { default: "#2A2A38", light: "#3A3A4A" },
+  text: { primary: "#FFFFFF", muted: "#9898A8", dim: "#5E5E72" },
+  violet: { primary: "#7D39EB", light: "#9B5FF5", dim: "#5A2BA8", bg: "rgba(125, 57, 235, 0.12)", glow: "rgba(125, 57, 235, 0.15)" },
+  lime: { primary: "#C6FF33", muted: "#A3D42A", bg: "rgba(198, 255, 51, 0.12)", glow: "rgba(198, 255, 51, 0.12)" },
+  bull: { primary: "#4CAF50", accent: "#7ED957", bg: "rgba(76, 175, 80, 0.20)", glow: "rgba(76, 175, 80, 0.15)" },
+  bear: { primary: "#F23645", accent: "#FF6B6B", bg: "rgba(242, 54, 69, 0.20)", glow: "rgba(242, 54, 69, 0.15)" },
+  fvg: { primary: "#FFEB3B", bg: "rgba(255, 235, 59, 0.20)" },
 } as const;
 
 // ── Bot States ──────────────────────────────
-export const BOT_STATES = [
-  "IDLE",
-  "WAITING",
-  "PREPARE",
-  "READY",
-  "ENTER",
-] as const;
-
+export const BOT_STATES = ["IDLE", "WAITING", "PREPARE", "READY", "ENTER"] as const;
 export type BotState = (typeof BOT_STATES)[number];
 
 // ── Signal Types ────────────────────────────
-export const SIGNAL_TYPES = [
-  "WAIT",
-  "READY",
-  "ENTER_LONG",
-  "ENTER_SHORT",
-] as const;
-
+export const SIGNAL_TYPES = ["WAIT", "READY", "ENTER_LONG", "ENTER_SHORT"] as const;
 export type SignalType = (typeof SIGNAL_TYPES)[number];
 
 // ── Setup Steps ─────────────────────────────
@@ -87,25 +39,42 @@ export const SETUP_STEPS = [
   "Price Inside FVG",
   "Session Validity",
 ] as const;
-
 export type SetupStep = (typeof SETUP_STEPS)[number];
 
 // ── Structure Events ────────────────────────
-export const STRUCTURE_EVENTS = [
-  "BOS",
-  "CHOCH",
-  "Liquidity Sweep",
-  "None",
-] as const;
-
+export const STRUCTURE_EVENTS = ["BOS", "CHOCH", "Liquidity Sweep", "None"] as const;
 export type StructureEvent = (typeof STRUCTURE_EVENTS)[number];
+
+// ── Emotions (Emoji-based) ──────────────────
+export interface Emotion {
+  emoji: string;
+  label: string;
+  value: string;
+}
+
+export const EMOTIONS: Emotion[] = [
+  { emoji: "😎", label: "Confident", value: "confident" },
+  { emoji: "😌", label: "Calm", value: "calm" },
+  { emoji: "🎯", label: "Disciplined", value: "disciplined" },
+  { emoji: "🔍", label: "Focused", value: "focused" },
+  { emoji: "😰", label: "FOMO", value: "fomo" },
+  { emoji: "😤", label: "Revenge", value: "revenge" },
+  { emoji: "😟", label: "Anxious", value: "anxious" },
+  { emoji: "🤔", label: "Hesitant", value: "hesitant" },
+  { emoji: "💪", label: "Overconfident", value: "overconfident" },
+  { emoji: "😐", label: "Neutral", value: "neutral" },
+];
+
+export function getEmotion(value: string): Emotion {
+  return EMOTIONS.find((e) => e.value === value) ?? EMOTIONS[9]; // default Neutral
+}
 
 // ── Navigation Items ────────────────────────
 export interface NavItem {
   id: string;
   label: string;
   href: string;
-  icon: string; // icon key
+  icon: string;
   section?: "main" | "analysis" | "tools" | "system";
 }
 
@@ -123,3 +92,16 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "alerts",       label: "Alerts",         href: "/alerts",        icon: "bell",       section: "tools" },
   { id: "settings",     label: "Settings",       href: "/settings",      icon: "settings",   section: "system" },
 ];
+
+// ── Instruments ─────────────────────────────
+export const INSTRUMENTS = ["MNQ", "MES", "MYM", "M2K", "MCL", "MGC", "6E"] as const;
+
+// ── Setup Types ─────────────────────────────
+export const SETUP_TYPES = [
+  "FVG Retrace",
+  "OB Continuation",
+  "Sweep Reversal",
+  "CHOCH Entry",
+  "VWAP Continuation",
+  "Double Sweep",
+] as const;

@@ -10,7 +10,7 @@ import { BotPanel } from "@/components/bot/BotPanel";
 import { useBarphaseEngine } from "@/hooks/useBarphaseEngine";
 
 export default function ChartPage() {
-  const { state, isRunning } = useBarphaseEngine();
+  const { state, isRunning, countdown, lastClose } = useBarphaseEngine();
 
   return (
     <div className="flex h-full w-full overflow-hidden">
@@ -20,7 +20,7 @@ export default function ChartPage() {
       </div>
       {/* Right: Bot Panel (25%) */}
       <div className="w-[360px] min-w-[320px] max-w-[400px] h-full flex-shrink-0">
-        <BotPanel state={state} isRunning={isRunning} />
+        <BotPanel state={state} isRunning={isRunning} countdown={countdown} lastClose={lastClose} />
       </div>
     </div>
   );
