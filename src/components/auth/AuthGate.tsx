@@ -1,39 +1,29 @@
 // ═══════════════════════════════════════════
-// BARPHASE — LOGIN PAGE
+// BARPHASE — AUTH GATE (wraps dashboard, shows login if not authenticated)
 // ═══════════════════════════════════════════
 
 "use client";
 
-import React, { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import React, { useState, useEffect } from "react";
+import { isAuthenticated, setAuthenticated, verifyPassword } from "@/lib/auth";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
+function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
+    if (verifyPassword(password)) {
+      setAuthenticated();
+      window.location.reload();
+    } else {
+      setError("Invalid access code");
       setLoading(false);
-      return;
     }
-
-    router.push("/overview");
-    router.refresh();
   };
 
   return (
@@ -62,32 +52,19 @@ export default function LoginPage() {
           <p className="text-[11px] text-bp-text-dim tracking-[0.2em] mt-1">PROPRIETARY TRADING OS</p>
         </div>
 
-        {/* Login Form */}
-        <form onSubmit={handleLogin} className="space-y-4">
+        {/* Password Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-[10px] text-bp-text-dim uppercase tracking-wider block mb-1.5">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="w-full bg-bp-bg-secondary border border-bp-border rounded-lg px-4 py-3 text-[13px] text-bp-text outline-none focus:border-bp-violet transition-colors placeholder:text-bp-text-dim/50"
-            />
-          </div>
-
-          <div>
-            <label className="text-[10px] text-bp-text-dim uppercase tracking-wider block mb-1.5">
-              Password
+              Access Code
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter access code"
               required
+              autoFocus
               className="w-full bg-bp-bg-secondary border border-bp-border rounded-lg px-4 py-3 text-[13px] text-bp-text outline-none focus:border-bp-violet transition-colors placeholder:text-bp-text-dim/50"
             />
           </div>
@@ -107,7 +84,7 @@ export default function LoginPage() {
                 : "bg-bp-violet text-white hover:bg-bp-violet-light hover:shadow-lg hover:shadow-bp-violet/20"
             }`}
           >
-            {loading ? "Authenticating..." : "Sign In"}
+            {loading ? "Verifying..." : "Enter"}
           </button>
         </form>
 
@@ -123,4 +100,29 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+export function AuthGate({ children }: { children: React.ReactNode }) {
+  const [authed, setAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    setAuthed(isAuthenticated());
+  }, []);
+
+  // Still checking — show nothing (avoids flash)
+  if (authed === null) {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-bp-bg">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-bp-violet border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Not authenticated — show login
+  if (!authed) {
+    return <LoginScreen />;
+  }
+
+  // Authenticated — show dashboard
+  return <>{children}</>;
 }

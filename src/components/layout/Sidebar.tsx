@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════
-// BARPHASE — SIDEBAR NAVIGATION (with Logout)
+// BARPHASE — SIDEBAR NAVIGATION
 // ═══════════════════════════════════════════
 
 "use client";
@@ -8,8 +8,7 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/constants";
-import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { clearAuthenticated } from "@/lib/auth";
 
 // ── SVG Icon Map ─────────────────────────
 function NavIcon({ name, className = "" }: { name: string; className?: string }) {
@@ -57,13 +56,10 @@ const SECTIONS = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const router = useRouter();
 
-  const handleLogout = async () => {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
+  const handleLogout = () => {
+    clearAuthenticated();
+    window.location.reload();
   };
 
   return (
