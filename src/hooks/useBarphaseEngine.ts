@@ -5,11 +5,13 @@
 // CRITICAL: The engine evaluates ONLY on the close of each
 // 3-minute candle. State is FROZEN between candle closes.
 // No intrabar updates, no second-by-second changes.
+// Reads engine config from engineConfigStore.
 
 "use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useSignalStore } from "@/store/signalStore";
+import { useEngineConfigStore } from "@/store/engineConfigStore";
 import { getNextSimulatedState, resetSimulation } from "@/lib/engine/simulator";
 import { BARPHASE } from "@/lib/constants";
 
@@ -45,13 +47,19 @@ export function formatCountdown(totalSeconds: number): string {
 
 export function useBarphaseEngine() {
   const { state, isRunning, updateState, setRunning, reset } = useSignalStore();
+  const { checks, tradeDirection, minScoreForReady, sensitivity } = useEngineConfigStore();
   const [countdown, setCountdown] = useState(() => Math.ceil(getMsUntilNextClose() / 1000));
   const [lastClose, setLastClose] = useState<Date>(() => getLastCandleCloseTime());
   const evaluationScheduled = useRef(false);
 
+  // Store config in ref so the scheduled callback always has latest
+  const configRef = useRef({ checks, tradeDirection, minScoreForReady, sensitivity });
+  configRef.current = { checks, tradeDirection, minScoreForReady, sensitivity };
+
   useEffect(() => {
     // ── Initial evaluation on mount ──
-    const initialState = getNextSimulatedState();
+    const cfg = configRef.current;
+    const initialState = getNextSimulatedState(cfg.checks, cfg.tradeDirection, cfg.minScoreForReady, cfg.sensitivity);
     updateState(initialState);
     setLastClose(getLastCandleCloseTime());
     setRunning(true);
@@ -62,8 +70,9 @@ export function useBarphaseEngine() {
     function scheduleNextEval() {
       const msUntil = getMsUntilNextClose();
       evalTimeout = setTimeout(() => {
-        // Candle just closed — evaluate once
-        const nextState = getNextSimulatedState();
+        // Candle just closed — evaluate once with current config
+        const cfg = configRef.current;
+        const nextState = getNextSimulatedState(cfg.checks, cfg.tradeDirection, cfg.minScoreForReady, cfg.sensitivity);
         updateState(nextState);
         setLastClose(new Date());
 

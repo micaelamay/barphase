@@ -4,11 +4,13 @@
 //
 // Generates realistic MNQ price action for demo purposes.
 // Cycles through trading scenarios to showcase all bot states.
+// Respects engine configuration from engineConfigStore.
 
 import type { BarphaseState, OrderBlock, FairValueGap } from "./types";
 import type { BotState, SignalType, StructureEvent } from "../constants";
 import { SETUP_STEPS } from "../constants";
 import type { SetupStep } from "../constants";
+import type { EngineChecks, TradeDirection } from "@/store/engineConfigStore";
 
 // Scenario definitions for the demo cycle
 interface Scenario {
@@ -194,8 +196,84 @@ function generateFVGs(price: number, bullish: boolean): FairValueGap[] {
   return gaps;
 }
 
+// ── Map setup steps to engine check keys ──
+const STEP_TO_CHECK: Record<SetupStep, keyof EngineChecks> = {
+  "Liquidity Sweep": "liquiditySweep",
+  "Displacement Candle": "displacementCandle",
+  "BOS/CHOCH Confirmation": "bosChochConfirmation",
+  "FVG Creation": "fvgCreation",
+  "Price Inside FVG": "priceInsideFVG",
+  "Session Validity": "sessionValidity",
+};
+
+/** Apply engine config to filter scenario results */
+function applyConfig(
+  scenario: Scenario,
+  checks: EngineChecks,
+  tradeDirection: TradeDirection,
+  minScoreForReady: number,
+  sensitivity: "conservative" | "normal" | "aggressive"
+): { botStatus: BotState; signal: SignalType; filteredSteps: SetupStep[]; score: number; maxScore: number } {
+  // Filter steps based on enabled checks
+  const filteredSteps = scenario.stepsComplete.filter((step) => {
+    const checkKey = STEP_TO_CHECK[step];
+    return checkKey ? checks[checkKey] : true;
+  });
+
+  // Calculate max possible score based on enabled checks
+  const enabledStepCount = SETUP_STEPS.filter((step) => {
+    const checkKey = STEP_TO_CHECK[step];
+    return checkKey ? checks[checkKey] : true;
+  }).length;
+
+  const score = filteredSteps.length;
+  const maxScore = enabledStepCount;
+
+  // Determine effective min score based on sensitivity
+  let effectiveMinScore = minScoreForReady;
+  if (sensitivity === "conservative") effectiveMinScore = Math.min(maxScore, minScoreForReady + 1);
+  if (sensitivity === "aggressive") effectiveMinScore = Math.max(1, minScoreForReady - 1);
+
+  // Apply trade direction filter
+  let signal = scenario.signal;
+  let botStatus = scenario.botStatus;
+
+  if (tradeDirection === "long_only" && signal === "ENTER_SHORT") {
+    signal = "WAIT";
+    botStatus = "WAITING";
+  }
+  if (tradeDirection === "short_only" && signal === "ENTER_LONG") {
+    signal = "WAIT";
+    botStatus = "WAITING";
+  }
+
+  // Apply score threshold
+  if (score < effectiveMinScore && (signal === "READY" || signal === "ENTER_LONG" || signal === "ENTER_SHORT")) {
+    signal = "WAIT";
+    if (score >= 2) botStatus = "PREPARE";
+    else botStatus = "WAITING";
+  }
+
+  // News awareness: if enabled, reduce to PREPARE max
+  if (checks.newsAwareness) {
+    // Simulate occasional news impact (every ~5th candle)
+    const candleNum = Math.floor(Date.now() / 180000);
+    if (candleNum % 5 === 0 && (signal === "ENTER_LONG" || signal === "ENTER_SHORT")) {
+      signal = "READY";
+      botStatus = "READY";
+    }
+  }
+
+  return { botStatus, signal, filteredSteps, score, maxScore };
+}
+
 /** Get the next simulated state (cycles through scenarios) */
-export function getNextSimulatedState(): BarphaseState {
+export function getNextSimulatedState(
+  checks?: EngineChecks,
+  tradeDirection?: TradeDirection,
+  minScoreForReady?: number,
+  sensitivity?: "conservative" | "normal" | "aggressive"
+): BarphaseState {
   const scenario = SCENARIOS[scenarioIndex];
   scenarioIndex = (scenarioIndex + 1) % SCENARIOS.length;
 
@@ -204,16 +282,27 @@ export function getNextSimulatedState(): BarphaseState {
   const price = Math.round(basePrice * 100) / 100;
   const change = jitter(0, 0.12);
 
+  // Apply config if provided
+  const config = checks
+    ? applyConfig(scenario, checks, tradeDirection ?? "both", minScoreForReady ?? 5, sensitivity ?? "normal")
+    : null;
+
+  const effectiveStatus = config?.botStatus ?? scenario.botStatus;
+  const effectiveSignal = config?.signal ?? scenario.signal;
+  const effectiveSteps = config?.filteredSteps ?? scenario.stepsComplete;
+  const effectiveScore = config?.score ?? scenario.stepsComplete.length;
+  const effectiveMaxScore = config?.maxScore ?? SETUP_STEPS.length;
+
   // Build steps record
   const steps = Object.fromEntries(
-    SETUP_STEPS.map((s) => [s, scenario.stepsComplete.includes(s)])
+    SETUP_STEPS.map((s) => [s, effectiveSteps.includes(s)])
   ) as Record<SetupStep, boolean>;
 
   const isBullish = scenario.bias === "Bullish";
 
   const state: BarphaseState = {
-    botStatus: scenario.botStatus,
-    signal: scenario.signal,
+    botStatus: effectiveStatus,
+    signal: effectiveSignal,
     lastUpdate: Date.now(),
 
     marketStructure: {
@@ -226,18 +315,18 @@ export function getNextSimulatedState(): BarphaseState {
 
     setupEvaluation: {
       steps,
-      score: scenario.stepsComplete.length,
-      maxScore: SETUP_STEPS.length,
+      score: effectiveScore,
+      maxScore: effectiveMaxScore,
     },
 
     entryConditions: {
-      liquiditySweep: scenario.stepsComplete.includes("Liquidity Sweep"),
-      displacementCandle: scenario.stepsComplete.includes("Displacement Candle"),
-      structureBreak: scenario.stepsComplete.includes("BOS/CHOCH Confirmation"),
-      fvgCreated: scenario.stepsComplete.includes("FVG Creation"),
-      priceInFVG: scenario.stepsComplete.includes("Price Inside FVG"),
-      confirmationCandle: scenario.botStatus === "ENTER",
-      sessionValid: scenario.stepsComplete.includes("Session Validity"),
+      liquiditySweep: effectiveSteps.includes("Liquidity Sweep"),
+      displacementCandle: effectiveSteps.includes("Displacement Candle"),
+      structureBreak: effectiveSteps.includes("BOS/CHOCH Confirmation"),
+      fvgCreated: effectiveSteps.includes("FVG Creation"),
+      priceInFVG: effectiveSteps.includes("Price Inside FVG"),
+      confirmationCandle: effectiveStatus === "ENTER",
+      sessionValid: effectiveSteps.includes("Session Validity"),
     },
 
     orderBlocks: scenario.hasOBs ? generateOrderBlocks(price, isBullish) : [],
