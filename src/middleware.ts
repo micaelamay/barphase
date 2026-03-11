@@ -1,25 +1,16 @@
 // ═══════════════════════════════════════════
-// BARPHASE — NEXT.JS MIDDLEWARE
-// Protects all routes — redirects to /login if unauthenticated
+// BARPHASE — NEXT.JS MIDDLEWARE (TEMPORARILY DISABLED FOR DEBUGGING)
 // ═══════════════════════════════════════════
 
-import { type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request);
+  // Temporarily pass all requests through — no auth check
+  return NextResponse.next();
 }
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public assets
-     * - api routes
-     */
     "/((?!_next/static|_next/image|favicon.ico|api|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
